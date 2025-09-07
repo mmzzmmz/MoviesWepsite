@@ -1,5 +1,5 @@
-const TMDB_API_KEY =
-  "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI2NGNkNzE0NzM0ZmFhNjI4MzViNTFkYWY2ZTc4YjFkNCIsIm5iZiI6MTc1NjI5MDYxMi4xMzkwMDAyLCJzdWIiOiI2OGFlZGUzNDY5NDJmMTdhOWIzZDhhNTEiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.HEvvFu1cWbtbV__4HPN8rwvZa591F7wobIHmWxr2yS4"
+// Read TMDB API key from environment for safety. Do NOT commit secrets to the repo.
+const TMDB_API_KEY = process.env.TMDB_API_KEY
 const BASE_URL = "https://api.themoviedb.org/3"
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/original"
 
@@ -26,15 +26,30 @@ export interface MovieDetails extends Movie {
   status: string
 }
 
+if (!TMDB_API_KEY) {
+  // Visible warning during local development/build if key is missing.
+  // This is intentional so the developer knows to provide the secret.
+  // Do not treat this as the secret value — it's only a diagnostic message.
+  // For CI, set TMDB_API_KEY in repository secrets.
+  // eslint-disable-next-line no-console
+  console.warn(
+    'Warning: TMDB_API_KEY is not set. API calls will fail. Set process.env.TMDB_API_KEY or add it to CI secrets.'
+  )
+}
+
 const apiOptions = {
-  method: "GET",
+  method: 'GET',
   headers: {
-    accept: "application/json",
-    Authorization: `Bearer ${TMDB_API_KEY}`,
+    accept: 'application/json',
+    ...(TMDB_API_KEY ? { Authorization: `Bearer ${TMDB_API_KEY}` } : {}),
   },
 }
 
 async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
+  if (!TMDB_API_KEY) {
+    // Fail fast with a clear message instead of silently sending unauthenticated requests.
+    throw new Error('TMDB_API_KEY is not set. Aborting request.');
+  }
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(url, apiOptions)
